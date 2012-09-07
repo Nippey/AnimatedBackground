@@ -1,0 +1,92 @@
+<!doctype HTML>
+<html><head>
+	<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+	<meta name="viewport" content="width=500, initial-scale=0.5">
+	<style>
+		#background { 
+			width: 300px; 
+			height: 300px; 
+			border: 1px solid black; 
+			overflow: hidden; 
+			position: relative; 
+			z-index: -3; 
+			float: right; 
+		}
+		#content { 
+			width: 90px; 
+			font-face: bold; 
+			background-color: hsla(200,100%,90%,0.5); 
+			border-radius: 15px; 
+			padding: 8px; 
+			margin: 20px; 
+		}
+	</style>
+	<script src="AnimatedBackground.js"></script>
+	<script>
+
+function textEffect(event) {
+	var text = null;
+	//if (["INPUT", "A"].hasElement(event.target.nodeName))
+	switch (event.target.nodeName) {
+		case "INPUT": 
+			if (event.target.type == "button")
+				text = event.target.value;
+			break;
+		case "A":
+			text = event.target.textContent;
+			break;
+		default:
+			text = "Haaage Dani!!";
+			break;
+	}
+	if (text)
+		window.dynWebBg.drawText(text);
+}
+
+function buttonClick(event) {
+	switch(event.target.id) {
+		case "testButton":
+			window.dynElemBg.setProperty({blockSize:3});
+			break;
+		case "testResize":
+			break;
+		case "stopButton":
+			if (window.dynElemBg.isRunning()) {
+				window.dynElemBg.stop();
+				window.dynWebBg.stop();
+				event.target.value = "Start Anim.";
+			} else {
+				window.dynElemBg.start();
+				window.dynWebBg.start();
+				event.target.value = "Stop Anim.";
+			}
+			break;
+		default: break;
+	}
+}
+
+function loadEvent() {
+	window.dynElemBg = new AnimatedBackground().createElementBackground(document.getElementById("background"));
+	window.dynWebBg = new AnimatedBackground().setProperty({hue:200}).createWebsiteBackground();
+	document.getElementById("testButton").addEventListener("click", buttonClick, false);
+	document.getElementById("stopButton").addEventListener("click", buttonClick, false);
+}
+
+//Listen to the ready-loaded page in order to initialise the background
+//IE's ".attachEvent" is not needed anymore when using html5
+window.addEventListener("DOMContentLoaded", loadEvent, false);
+window.addEventListener("click", textEffect, false);
+
+	</script>
+</head>
+<body>
+	<div id="background"> </div>
+	<div id="content"> 
+		JUST TO MAKE IT SCROLL<hr />
+		<input id="testButton" style="width:100%" type="button" value="Test Button" /><br />
+		<!--<input id="testResize" style="width:100%" type="button" value="Test Resize" /><br />-->
+		<input id="stopButton" style="width:100%" type="button" value="Stop Anim." /><br />
+		<a href="#test">Test Link</a><br />
+		Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+	</div>
+</body></html>
