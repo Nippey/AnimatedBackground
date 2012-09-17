@@ -34,6 +34,7 @@
 /* For Development */
 //Use strict mode together with Object.seal() to prevent typos, etc when they come up!
 "use strict";
+var ABGscriptName = "AnimatedBackground.js";
 
 /* Some helper Functions */
 //Reduce Number to the given range
@@ -170,6 +171,22 @@ function AnimatedBackground() {
 	
 	//Load the external font file. If possible load the binary version, which is 24-times smaller.
 	//If loading the binary font fails, the javascript version will be retrieved.
+	var loadFailSafeFont = function() {
+		//console.log("Binary font missing, loading failsafe variant.");
+		AnimatedBackground.staticFontStatus = AnimatedBackground.FONT_MISSING;
+		//Add a script tag to the DOM in order to load the JS-version of the font
+		var scripts = document.getElementsByTagName("script");
+		var path = "";
+		for (var i in scripts)
+			if (scripts[i].src.indexOf(ABGscriptName) != -1) {
+				path = scripts[i].src.substr(0,scripts[i].src.indexOf(ABGscriptName));
+				break;
+			}
+			
+		var font = document.createElement("script");
+		font.setAttribute("src", path+"fnt6x11.min.js");
+		document.head.appendChild(font);	
+	};
 	try {
 		if (!window.Uint8Array) throw "Switching to failsafe font.";
 		if (AnimatedBackground.staticFontStatus == AnimatedBackground.FONT_UNLOADED) {
@@ -184,20 +201,12 @@ function AnimatedBackground() {
 				AnimatedBackground.staticFontStatus = AnimatedBackground.FONT_LOADED;
 			}, false);
 			xhr.addEventListener('error', function(e) {
-				//console.log("Binary font missing, loading failsafe variant.");
-				AnimatedBackground.staticFontStatus = AnimatedBackground.FONT_MISSING;
-				//Add a script tag to the DOM in order to load the JS-version of the font
-				var font = document.createElement("script");
-				font.setAttribute("src","fnt6x11.min.js");
-				document.head.appendChild(font);
+				loadFailSafeFont();
 			}, false);
 			xhr.send(null);
 		}
 	} catch (exp) {
-		//console.log("Binary font missing, loading failsafe variant.");
-		var font = document.createElement("script");
-		font.setAttribute("src","fnt6x11.min.js");
-		document.head.appendChild(font);
+		loadFailSafeFont();
 	}
 	
 	//Settings
@@ -209,7 +218,9 @@ function AnimatedBackground() {
 	this.dynamicLightnessBase = 80;			//Minimum dynamic lightness value ...
 	this.dynamicLightnessVariation = 15;	//Variation of the dynamic lightness value  ...
 
-	//Size
+	//Size and Style
+	this.drawingStyle = 2;					//Select among different drawing-styles as rectangles or circles
+	this.noOfLightnessShades = 4;			//Number of different colours used for the background pattern
 	this.blockSize = 6;						//Size of a single quadratic block
 	//General Timing
 	this.fadeAmount = 1;					//Alpha value the dynamic points will be faded WITHIN ONE SECOND
@@ -220,10 +231,13 @@ function AnimatedBackground() {
 	this.pathLengthVariation = 15;
 	//END Settings
 
+	
 	//Global working variables
 	this.stopAnimation = false;
 	this.created = false;
 	//Structural values and dimension
+	this.lightnessShades = [];				//
+	this.pattern = [];						//Contains the background pattern's lightness values
 	this.containerElement = null;			//The parent element of the canvas elements
 	this.sC = null; this.dC = null;			//The two canvas elements
 	this.ctx = null;						//The drawing context
@@ -247,24 +261,15 @@ function AnimatedBackground() {
 
 	//Listen to resize events in order to fit the canvas' size
 	//Using lexical closure as setInterval or event handlers in general would change from AnimatedBackground's context to global window context
+	//IE's ".attachEvent" is not needed anymore when using html5
 	var that = this;
-	if (window.addEventListener) {
-		window.addEventListener("resize", function() {
-			that.resizedEvent = true;
-		}, false);
-		//No idea if it helps on opera mobile. It is possible to register a rezise handler there, but it will never be fired..
-		window.addEventListener("touchstart", function() {
-			that.resizedEvent = true;
-		}, false);
-	} else {
-		window.attachEvent("onresize", function() {
-			that.resizedEvent = true;
-		});
-		//No idea if it helps on opera mobile. It is possible to register a rezise handler there, but it will never be fired..
-		window.attachEvent("ontouchstart", function() {
-			that.resizedEvent = true;
-		});	
-	}
+	window.addEventListener("resize", function() {
+		that.resizedEvent = true;
+	}, false);
+	//No idea if it helps on opera mobile. It is possible to register a rezise handler there, but it will never be fired..
+	window.addEventListener("touchstart", function() {
+		that.resizedEvent = true;
+	}, false);
 	
 	//Seal this instance of the class
 	if (Object.seal)
@@ -285,6 +290,12 @@ AnimatedBackground.FONT_LOADED = 2;
 AnimatedBackground.FONT_MISSING = 3;
 AnimatedBackground.staticFontStatus = AnimatedBackground.FONT_UNLOADED;
 AnimatedBackground.staticFont = null;
+
+//Static values to represent the different drawing modes
+AnimatedBackground.DS_RECT = 0;			//Do the animation using rectangles: Primary Operation: FillRect()
+AnimatedBackground.DS_CIRCLE_PRE = 1;	// .. using predrawn circles: Primary Operation: DrawImage()
+AnimatedBackground.DS_CIRCLE = 2;		// .. using circles: Primary Operation: Arc()
+
 
 //Measures the time since the last call of this function
 //Saves this time in frameTime and returns this value
@@ -319,12 +330,27 @@ AnimatedBackground.prototype.initBackground = function(parentElement) {
 	var oldC = this.sC;
 	this.sC = this.initCanvas("static_canvas_"+this.ID, -2);
 	this.dC = this.initCanvas("dynamic_canvas_"+this.ID, -1);	
-
+	
+	//Create background pattern colours
+	for (var i = 0; i < this.noOfLightnessShades; i++)
+		this.lightnessShades[i] = Math.floor(this.staticLightnessBase + i / (this.noOfLightnessShades-1) * this.staticLightnessVariation);	//=> noOfLightnessShades must be >= 2
+	if (this.noOfLightnessShades == 1)
+		this.lightnessShades[0] = Math.floor(this.staticLightnessBase + this.staticLightnessVariation/2);
+	
+	//Create pattern data
+	for (var x = 0; x < this.rasterWidth; x++) {
+		if (typeof(this.pattern[x]) == "undefined")
+			this.pattern[x] = new Array();
+		for (var y = this.pattern[x].length; y < this.rasterHeight; y++) {
+			this.pattern[x][y] = Math.floor(Math.random() * this.noOfLightnessShades);
+		}
+	}
+	
 	//
 	this.sC.style.backgroundColor = "hsl(" + this.hue + ", " + this.saturation + "%, 70%)";
 	//Get drawing context of static canvas
 	this.ctx = this.sC.getContext("2d");
-	//Drawing will only happen there, where the canvas is still empty this prevents flickering/complete refresh on resize operations
+	///Drawing will only happen there, where the canvas is still empty this prevents flickering/complete refresh on resize operations
 	this.ctx.globalCompositeOperation = "source-over";	//Default is source-over
 	
 	//The following is now declared as style of the canvas element
@@ -332,25 +358,74 @@ AnimatedBackground.prototype.initBackground = function(parentElement) {
 	//this.ctx.globalCompositeOperation = "destination-over";
 	//this.ctx.fillStyle = "hsl(" + this.hue + ", " + this.saturation + "%, 70%)";
 	//this.ctx.fillRect(0, 0, this.cWidth, this.cHeight);
-		
-	//Draw the boxes with a random colour (in a certain range of course)
-	//this.ctx.beginPath();
-	for (var x = 0; x < this.cWidth; x += this.rasterSize) for (var y = 0; y < this.cHeight; y += this.rasterSize) {
-		//Skip if the current area is pre drawn by a previous canvas initialisation
-		if (!this.refreshBG && oldC && x < oldC.width && y < oldC.height) continue;
-		this.ctx.fillStyle = "hsl(" + this.hue + ", " + this.saturation + "%, " 
-				+ Math.floor(this.staticLightnessBase + Math.random() * this.staticLightnessVariation) + "%)";
-		this.ctx.fillRect(x, y, this.blockSize, this.blockSize);
-		//this.ctx.beginPath();
-		//this.ctx.moveTo(x, y);
-		//this.ctx.arc(x, y, this.blockSize / 2, 2 * Math.PI, false);
-		//this.ctx.fill();
-	}
-	this.ctx.fill();
+	
+	if (oldC)
+		this.drawBackground({width:oldC.width, height:oldC.height});
+	else
+		this.drawBackground();
 		
 	//Change (back) to the dynamic canvas in the foreground for later operations
 	this.ctx = this.dC.getContext("2d");
 	this.ctx.globalCompositeOperation = "source-over";	//Default is source-over
+}
+
+//Draw the boxes with a random colour
+AnimatedBackground.prototype.drawBackground = function(predrawn) {
+
+	//This is a temporary canvas for computational intensive drawing tasks
+	var miniCanvas, miniCtx;
+	if (this.drawingStyle == AnimatedBackground.DS_CIRCLE_PRE) {
+		miniCanvas = document.createElement("canvas");
+		miniCanvas.width = this.blockSize; miniCanvas.height = this.blockSize;
+		miniCtx = miniCanvas.getContext("2d");
+	}
+	
+	if (console.time) console.time("drawing");
+	for (var shade = 0; shade < this.noOfLightnessShades; shade++) {
+		switch (this.drawingStyle) {
+			case AnimatedBackground.DS_RECT:
+				this.ctx.fillStyle = "hsl(" + this.hue + ", " + this.saturation + "%, " + this.lightnessShades[shade] + "%)";
+				break;
+			case AnimatedBackground.DS_CIRCLE_PRE:
+				miniCtx.clearRect(0,0,this.blockSize,this.blockSize);
+				miniCtx.fillStyle = "hsl(" + this.hue + ", " + this.saturation + "%, " + this.lightnessShades[shade] + "%)";
+				miniCtx.beginPath();
+				miniCtx.arc(this.blockSize/2, this.blockSize/2, this.blockSize / 2, 2 * Math.PI, false);
+				miniCtx.fill();
+				break;
+			case AnimatedBackground.DS_CIRCLE:
+				this.ctx.fillStyle = "hsl(" + this.hue + ", " + this.saturation + "%, " + this.lightnessShades[shade] + "%)";
+				this.ctx.beginPath();
+				break;
+		}
+		
+		for (var x = 0; x < this.rasterWidth; x++) for (var y = 0; y < this.rasterHeight; y++) {
+			//Skip if the current area is pre drawn by a previous canvas initialisation
+			if (!this.refreshBG && predrawn && x*this.rasterSize < predrawn.width && y*this.rasterSize < predrawn.height) continue;
+			//this.ctx.fillStyle = "hsl(" + this.hue + ", " + this.saturation + "%, " + this.lightnessShades[this.pattern[x][y]] + "%)";
+			if (this.pattern[x][y] == shade) {
+				switch (this.drawingStyle) {
+					case AnimatedBackground.DS_RECT:
+						this.ctx.fillRect(x*this.rasterSize, y*this.rasterSize, this.blockSize, this.blockSize);
+						break;
+					case AnimatedBackground.DS_CIRCLE_PRE:
+						this.ctx.drawImage(miniCanvas, x*this.rasterSize, y*this.rasterSize);
+						break;
+					case AnimatedBackground.DS_CIRCLE:
+						this.ctx.moveTo(x*this.rasterSize, y*this.rasterSize);
+						this.ctx.arc(x*this.rasterSize+this.blockSize/2, y*this.rasterSize+this.blockSize/2, this.blockSize / 2, 2 * Math.PI, false);
+						break;
+				}
+			}
+		}
+		
+		switch (this.drawingStyle) {
+			case AnimatedBackground.DS_CIRCLE:
+				this.ctx.fill();
+				break;
+		}
+	}
+	if (console.time) console.timeEnd("drawing");
 }
 
 //Initialise a new canvas (or change the size of an existing canvas) and insert
@@ -480,13 +555,21 @@ AnimatedBackground.prototype.fadeOut = function() {
 	this.ctx.clearRect(0, 0, this.cWidth, this.cHeight);
 	//this.ctx.beginPath();
 	for (var i = 0; i < this.dynamicPoints.length; i++) {
-		this.ctx.fillStyle = "hsla(" + this.hue + ", " + this.saturation + "%, " + this.dynamicPoints[i].light + "%, " + this.dynamicPoints[i].alpha.valid(0, 1).toFixed(4) + ")";
-		this.ctx.fillRect(this.dynamicPoints[i].x * this.rasterSize, this.dynamicPoints[i].y * this.rasterSize, this.blockSize, this.blockSize);
-		//this.ctx.beginPath();
-		//this.ctx.moveTo(this.dynamicPoints[i].x * this.rasterSize, this.dynamicPoints[i].y * this.rasterSize);
-		//this.ctx.arc(this.dynamicPoints[i].x * this.rasterSize + this.blockSize / 2, this.dynamicPoints[i].y * this.rasterSize + this.blockSize / 2, this.blockSize / 2, 2 * Math.PI, false);
-		//this.ctx.fill();
-
+		switch (this.drawingStyle) {
+			case AnimatedBackground.DS_RECT:
+				this.ctx.fillStyle = "hsla(" + this.hue + ", " + this.saturation + "%, " + this.dynamicPoints[i].light + "%, " + this.dynamicPoints[i].alpha.valid(0, 1).toFixed(4) + ")";
+				this.ctx.fillRect(this.dynamicPoints[i].x * this.rasterSize, this.dynamicPoints[i].y * this.rasterSize, this.blockSize, this.blockSize);
+				break;
+			case AnimatedBackground.DS_CIRCLE_PRE:
+			case AnimatedBackground.DS_CIRCLE:
+				this.ctx.fillStyle = "hsla(" + this.hue + ", " + this.saturation + "%, " + this.dynamicPoints[i].light + "%, " + this.dynamicPoints[i].alpha.valid(0, 1).toFixed(4) + ")";
+				this.ctx.beginPath();
+				this.ctx.moveTo(this.dynamicPoints[i].x * this.rasterSize, this.dynamicPoints[i].y * this.rasterSize);
+				this.ctx.arc(this.dynamicPoints[i].x * this.rasterSize + this.blockSize / 2, this.dynamicPoints[i].y * this.rasterSize + this.blockSize / 2, this.blockSize / 2, 2 * Math.PI, false);
+				this.ctx.fill();
+				break;
+		}
+		
 		if ( this.dynamicPoints[i].alpha > 0)
 			this.dynamicPoints[i].alpha = Math.max(this.dynamicPoints[i].alpha - fadeAmount, 0);
 		else 
@@ -586,17 +669,49 @@ AnimatedBackground.prototype.setProperty = function(props) {
 	//Note: Foreground is refreshed each frame anyway and old values will fade away over the next frames
 	//      So: 'Refresh FG' won't do anything now
 	var availableProps = {
-		hue:1, saturation:1, staticLightnessBase:1, staticLightnessVariation:1, dynamicLightnessBase:2, dynamicLightnessVariation:2, 
-		blockSize:3, fadeAmount:2, pathPauseBase:2, pathPauseVariation:2, pathLengthBase:2, pathLengthVariation:2};
+		hue:{refresh:1,min:0,max:360}, saturation:{refresh:1,min:0,max:100}, 
+		staticLightnessBase:{refresh:1,min:0,max:100}, staticLightnessVariation:{refresh:1,min:0,max:100}, 
+		dynamicLightnessBase:{refresh:2,min:0,max:100}, dynamicLightnessVariation:{refresh:2,min:0,max:100}, 
+		blockSize:{refresh:3,min:0,max:100}, fadeAmount:{refresh:2,min:0.1,max:10}, 
+		pathPauseBase:{refresh:2,min:0,max:100}, pathPauseVariation:{refresh:2,min:0,max:100}, 
+		pathLengthBase:{refresh:2,min:0,max:100}, pathLengthVariation:{refresh:2,min:0,max:100}, 
+		drawingStyle:{refresh:3,min:0,max:2}, noOfLightnessShades:{refresh:3,min:1,max:10} };
 	var keys = Object.keys(props);
-	for (var key in keys) {
-		if ( availableProps.hasOwnProperty(keys[key]) ) {
-			this[keys[key]] = props[keys[key]];
-			if (keys[key] == "blockSize") this.rasterSize = this.blockSize + 1;
-			this.refreshBG |= (availableProps[keys[key]] & 0x01);
-		} else console.log("Unknown property: " + keys[key]);
+
+	for (var k in keys) {
+		var key = keys[k];
+		if ( availableProps.hasOwnProperty(key) && this[key] != props[key]) {
+			this[key] = props[key];
+			if (key == "blockSize") this.rasterSize = this.blockSize + 1;
+			if (key == "noOfLightnessShades") this.pattern = [];
+			this.refreshBG |= (availableProps[key].refresh & 0x01);
+		} else console.log("Unknown property: " + key);
 	}
 	return this;
+}
+
+//
+//Uses object vars: 	<ALL CHANGEABLE>
+AnimatedBackground.prototype.getProperty = function(props) {
+	var availableProps = {
+		hue:{refresh:1,min:0,max:360,step:10}, saturation:{refresh:1,min:0,max:100}, 
+		staticLightnessBase:{refresh:1,min:0,max:100}, staticLightnessVariation:{refresh:1,min:0,max:100}, 
+		dynamicLightnessBase:{refresh:2,min:0,max:100}, dynamicLightnessVariation:{refresh:2,min:0,max:100}, 
+		blockSize:{refresh:3,min:0,max:100}, fadeAmount:{refresh:2,min:0.1,max:10,step:0.1}, 
+		pathPauseBase:{refresh:2,min:0,max:100}, pathPauseVariation:{refresh:2,min:0,max:100}, 
+		pathLengthBase:{refresh:2,min:0,max:100}, pathLengthVariation:{refresh:2,min:0,max:100}, 
+		drawingStyle:{refresh:3,min:0,max:2}, noOfLightnessShades:{refresh:3,min:1,max:10} };
+	
+	props = props || availableProps;	//If no argument defined, get all
+	var keys = Object.keys(props);
+	var returnObject = {};
+	
+	for (var key in keys) {
+		if ( availableProps.hasOwnProperty(keys[key]) ) {
+			returnObject[keys[key]] = {min:availableProps[keys[key]].min, max:availableProps[keys[key]].max, value:this[keys[key]], step:availableProps[keys[key]].step };
+		} else console.log("Unknown property: " + keys[key]);
+	}
+	return returnObject;
 }
 
 //Resumes a previously stopped animation
@@ -610,6 +725,7 @@ AnimatedBackground.prototype.start = function() {
 	this.liveBackground();
 	return this;
 }
+
 //Stops a running animation
 //Uses object vars: 	stopAnimation
 //Uses own functions:	liveBackground
@@ -618,6 +734,7 @@ AnimatedBackground.prototype.stop = function() {
 	this.stopAnimation = true;
 	return this;
 }
+
 //Returns the current running state of the Background
 //Uses object vars: 	created, stopAnimation
 AnimatedBackground.prototype.isRunning = function() {

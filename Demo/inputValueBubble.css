@@ -1,0 +1,45 @@
+/* Source: http://css-tricks.com/value-bubbles-for-range-inputs/ */
+
+form, div.bubbleInput { 
+	position: relative; 
+	display:inline-block; 
+	margin: 10px; 
+	padding-top:35px; 
+	/*height: 60px;*/
+}
+
+output, span.minOutput, span.maxOutput { 
+	position: absolute;
+	background-color: #999999;
+	/*background-image: -o-linear-gradient(top, #444444, #999999);
+	background-image: linear-gradient(top, #444444, #999999);*/
+	width: 40px; 
+	height: 20px; 
+	text-align: center; 
+	color: white; 
+	border-radius: 8px;
+	display: inline-block; 
+	font: bold 15px/30px Georgia;
+	bottom: 28px;
+	left: 0px;
+	
+	line-height:1em;
+	
+	box-shadow: 0 0 2px 2px hsla(200,50%,50%,1);
+	-webkit-box-shadow: 0 0 2px 2px hsla(200,50%,50%,1);
+	-moz-box-shadow: 0 0 2px 2px hsla(200,50%,50%,1);/**/
+}
+
+output:after, span.minOutput:after, span.maxOutput:after { 
+	content: "";
+	position: absolute; 
+	width: 0;
+	height: 0;
+	border-top: 8px solid #999999;
+	border-left: 5px solid transparent;
+	border-right: 5px solid transparent;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	margin-top: -1px;
+}

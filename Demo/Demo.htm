@@ -1,0 +1,187 @@
+<!doctype HTML>
+<!-- Use this URL to view this file directly on GitHub: http://htmlpreview.github.com/?https://github.com/Nippey/AnimatedBackground/blob/master/DemoTest.htm -->
+<html><head>
+	<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+	<meta name="viewport" content="width=500, initial-scale=0.5">
+	<style>
+		#elementBackground { 
+			width: 300px; 
+			height: 300px; 
+			border: 1px solid black; 
+			overflow: hidden; 
+			position: relative; 
+			z-index: -3; 
+			float: right; 			
+		}
+		#elementBackground p {
+			font-variant: small-caps;
+			font-size: larger;
+			padding: 1em;
+		}
+		#content { 
+			width: 90px; 
+			background-color: hsla(200,100%,90%,0.5); 
+			border-radius: 15px; 
+			padding: 8px; 
+			margin: 20px; 
+			display: block;
+			float: left;
+		}
+		#demo_maniulation {
+			width: 450px;
+			background-color: hsla(200,100%,90%,0.5); 
+			border-radius: 15px; 
+			padding: 8px; 
+			margin: 20px; 
+			display: inline-block;
+			height: 1em;
+			overflow: hidden;
+		}
+	</style>
+	
+	<!-- Source: http://css-tricks.com/value-bubbles-for-range-inputs/ ; Modified. -->
+	<link rel="stylesheet" href="inputValueBubble.css" />
+	<script src="inputValueBubble.js"></script>
+	<!-- End Of Source: http://css-tricks.com/value-bubbles-for-range-inputs/ -->
+	<script src="html5slider.js"></script>
+	
+	<script src="../AnimatedBackground.js"></script>
+	
+<script>
+	
+function textEffect(event) {
+	var text = null;
+	//if (["INPUT", "A"].hasElement(event.target.nodeName))
+	switch (event.target.nodeName) {
+		case "INPUT": 
+			if (event.target.type == "button")
+				text = event.target.value;
+			break;
+		case "A":
+			text = event.target.textContent;
+			break;
+		default:
+			text = "";
+			break;
+	}
+	if (text != null)
+		window.dynWebBg.drawText(text);
+}
+
+function buttonClick(event) {
+	switch(event.target.name || event.target.id) {
+		case "setButton":
+			var props = window.dynWebBg.getProperty();
+			for (var prop in props) {
+				var i = document.getElementById(prop);
+				props[prop] = i.valueAsNumber;
+			}
+			window.dynWebBg.setProperty(props);
+
+			//window.dynElemBg.setProperty({blockSize:3});
+			//window.dynWebBg.setProperty({hue:100});
+			//window.dynWebBg.setProperty({drawingStyle:0});
+			break;
+		case "stopButton":
+			if (window.dynWebBg.isRunning()) {
+				window.dynElemBg.stop();
+				window.dynWebBg.stop();
+				event.target.value = "Start Anim.";
+			} else {
+				window.dynElemBg.start();
+				window.dynWebBg.start();
+				event.target.value = "Stop Anim.";
+			}
+			break;
+		case "drawingStyle":
+			var ds = (event.target.value == "Rect") ? AnimatedBackground.DS_RECT : ( (event.target.value == "Circle") ? AnimatedBackground.DS_CIRCLE : AnimatedBackground.DS_CIRCLE_PRE );
+			window.dynWebBg.setProperty({drawingStyle:ds});
+			break;
+		default: alert("UNKNOWN CLICK"); break;
+	}
+}
+
+function loadEvent() {
+	//Create the two animated backgrounds
+	window.dynElemBg = new AnimatedBackground().setProperty({blockSize:4,drawingStyle:0}).createElementBackground(document.getElementById("elementBackground"));
+	window.dynWebBg = new AnimatedBackground().setProperty({hue:200}).createWebsiteBackground();
+	
+	//Search for buttons with the "click-me" attribute and add a click-event
+	var elms = document.getElementsByTagName("input");
+	for (var i=0; i<elms.length; i++) 
+		if("click-me" in elms[i].attributes)
+				elms[i].addEventListener("click", buttonClick, false);
+	
+	//Create a range-input for each changeable property of AnimatedBackground
+	createInputs(window.dynWebBg);
+	//Hook-up the value bubbles
+	modifyInputs();
+}
+
+//Create a range-input for each changeable property of AnimatedBackground
+function createInputs(bg) {
+	var props = bg.getProperty();
+	var sandbox = document.getElementById("propTable");
+	for (var p in props) {
+		var prop = props[p];
+		var divRow, divCell, input, bubble;
+		divRow = document.createElement("div");
+		divRow.setAttribute("style","display:table-row; height:50px;vertical-align:middle;");
+		divCell = document.createElement("div");
+		divCell.setAttribute("style","display:table-cell;vertical-align:middle;padding-right:20px;");
+		divCell.appendChild(document.createTextNode(p+":"));
+		divRow.appendChild(divCell);
+		divCell = document.createElement("div");
+		divCell.setAttribute("style","display:table-cell");
+		divCell.className = "bubbleInput";
+		input = document.createElement("input");
+		input.type = "range";
+		input.name = p;
+		input.id = p;
+		input.setAttribute("min",prop.min);
+		input.setAttribute("max",prop.max);
+		if (prop.step)
+			input.setAttribute("step",prop.step);
+		input.value = prop.value;
+		divCell.appendChild(input);
+		bubble = document.createElement("span");
+		bubble.className = "minOutput"
+		bubble.setAttribute("for",p);
+		bubble.appendChild(document.createTextNode(prop.min));
+		divCell.appendChild(bubble);
+		bubble = document.createElement("span");
+		bubble.className = "maxOutput"
+		bubble.setAttribute("for",p);
+		bubble.appendChild(document.createTextNode(prop.max));
+		divCell.appendChild(bubble);
+		bubble = document.createElement("output");
+		bubble.setAttribute("for",p);
+		bubble.appendChild(document.createTextNode(prop.value));
+		divCell.appendChild(bubble);
+		divRow.appendChild(divCell);
+		sandbox.appendChild(divRow);
+	}
+}
+
+//Listen to the ready-loaded page in order to initialise the background
+//IE's ".attachEvent" is not needed anymore when using html5
+window.addEventListener("DOMContentLoaded", loadEvent, false);
+window.addEventListener("click", textEffect, false);
+
+	</script>
+</head>
+<body>
+	<div id="elementBackground"> <p>Some container element with dynamic background. </p></div>
+	<div id="content"> 
+		JUST TO MAKE IT SCROLL<hr />
+		<a href="#test">Test Link</a><br />
+		Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+	</div>
+	<div id="demo_maniulation">
+		<a href="#" onclick="document.getElementById('demo_maniulation').style.height = 'auto';"> MANIPULATE THIS </a><hr />
+		Style: <input type="radio" name="drawingStyle" click-me value="Rect" /> Rect <input type="radio" name="drawingStyle" click-me value="Circle" /> Circle <input type="radio" name="drawingStyle" click-me value="CirclePre" checked /> CirclePre
+		<div id="sandbox" style="height:250px; overflow-y:scroll; overflow-x:hidden; margin: 10px auto;"><div id="propTable" style="text-transform:capitalize;display:table;"></div></div>
+		<input id="setButton" style="width:49%" type="button" click-me value="set Props" /> 
+		<input id="stopButton" style="width:49%" type="button" click-me value="Stop Anim." /><br />
+	</div>
+</body></html>
