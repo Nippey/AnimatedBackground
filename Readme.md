@@ -12,7 +12,7 @@ http://htmlpreview.github.com/?<COMPLETE_URL>
 
 **Like this:**
 
-http://htmlpreview.github.com/?https://github.com/Nippey/AnimatedBackground/blob/master/DemoTest.htm
+http://htmlpreview.github.com/?https://github.com/Nippey/AnimatedBackground/blob/master/Demo/Demo.htm
 
 ## ToDo: ##
 
