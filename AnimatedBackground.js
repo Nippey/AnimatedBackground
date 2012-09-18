@@ -169,22 +169,24 @@ function AnimatedBackground() {
 	//Assign local ID and increase static variable
 	this.ID = AnimatedBackground.staticID++;
 	
+	//
+	var getThisScriptPath = function(scriptName) {
+		for ( var idx = 0; idx < document.scripts.length; idx++) {
+			var url = document.scripts[idx].getAttribute("src") || "";
+			var pos = url.indexOf(scriptName);
+			if ( pos != -1 && (pos == 0 || url[pos-1] == "/") ) 
+				return url.substr(0,pos);
+		}
+		return "";
+	}
 	//Load the external font file. If possible load the binary version, which is 24-times smaller.
 	//If loading the binary font fails, the javascript version will be retrieved.
 	var loadFailSafeFont = function() {
 		//console.log("Binary font missing, loading failsafe variant.");
 		AnimatedBackground.staticFontStatus = AnimatedBackground.FONT_MISSING;
 		//Add a script tag to the DOM in order to load the JS-version of the font
-		var scripts = document.getElementsByTagName("script");
-		var path = "";
-		for (var i in scripts)
-			if (scripts[i].src.indexOf(ABGscriptName) != -1) {
-				path = scripts[i].src.substr(0,scripts[i].src.indexOf(ABGscriptName));
-				break;
-			}
-			
 		var font = document.createElement("script");
-		font.setAttribute("src", path+"fnt6x11.min.js");
+		font.setAttribute("src", getThisScriptPath(ABGscriptName)+"fnt6x11.min.js");
 		document.head.appendChild(font);	
 	};
 	try {
@@ -193,7 +195,7 @@ function AnimatedBackground() {
 			AnimatedBackground.staticFontStatus = AnimatedBackground.FONT_LOADING;
 			//Start XHR to load binary data
 			var xhr = new XMLHttpRequest();
-			xhr.open('GET', 'fnt6x11.bin', true);
+			xhr.open('GET', getThisScriptPath(ABGscriptName)+'fnt6x11.bin', true);
 			xhr.responseType = 'arraybuffer';
 			xhr.addEventListener('load', function(e) {
 				//Add font as static Byte-Array to the AnimatedBackground class
