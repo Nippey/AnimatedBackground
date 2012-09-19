@@ -34,7 +34,6 @@
 			padding: 8px; 
 			margin: 20px; 
 			display: inline-block;
-			height: 1em;
 			overflow: hidden;
 		}
 	</style>
@@ -178,10 +177,39 @@ window.addEventListener("click", textEffect, false);
 		Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
 	</div>
 	<div id="demo_maniulation">
-		<a href="#" onclick="document.getElementById('demo_maniulation').style.height = 'auto';"> MANIPULATE THIS </a><hr />
-		Style: <input type="radio" name="drawingStyle" click-me value="Rect" /> Rect <input type="radio" name="drawingStyle" click-me value="Circle" /> Circle <input type="radio" name="drawingStyle" click-me value="CirclePre" checked /> CirclePre
-		<div id="sandbox" style="height:250px; overflow-y:scroll; overflow-x:hidden; margin: 10px auto;"><div id="propTable" style="text-transform:capitalize;display:table;"></div></div>
-		<input id="setButton" style="width:49%" type="button" click-me value="set Props" /> 
-		<input id="stopButton" style="width:49%" type="button" click-me value="Stop Anim." /><br />
+		<div style="display:table; width:100%">
+			<div style="display:table-row; height:1em;"><div style="display:table-cell">
+				<a href="#" onclick="document.getElementById('demo_maniulation').style.height = 'auto';"> MANIPULATE THIS </a><hr />
+				<!--Style: <input type="radio" name="drawingStyle" click-me value="Rect" /> Rect <input type="radio" name="drawingStyle" click-me value="Circle" /> Circle <input type="radio" name="drawingStyle" click-me value="CirclePre" checked /> CirclePre-->
+			</div></div><div style="display:table-row"><div style="display:table-cell">
+					<div id="sandbox" style="height:168px; overflow-y:scroll; overflow-x:hidden; margin: 10px auto;">
+						<div id="propTable" style="text-transform:capitalize;display:table;"></div>
+					</div>
+			</div></div><div style="display:table-row; height:1em;"><div style="display:table-cell">
+				<input id="setButton" style="width:49%;" type="button" click-me value="set Props" /> 
+				<input id="stopButton" style="width:49%" type="button" click-me value="Stop Anim." />
+			</div></div>
+		</div>
+		<div id="grippie" style="position:abolute; display: inline-block; width:100%; height:9px; background: grey url(grip.png) no-repeat center center; bottom:0px; cursor: s-resize;"></div>
 	</div>
+	<script>
+/* Resize by Grip - Mouse Handler */
+var gripClicked = false, mouseStartPosY = 0, gripStartHeight = 0;
+function gripDown(e) {
+	gripClicked = true;
+	mouseStartPosY = e.clientY;
+	gripStartHeight = parseInt(document.getElementById("sandbox").clientHeight);
+}
+function gripMove(e) {
+	if (gripClicked)
+		document.getElementById("sandbox").style.height = (gripStartHeight + (e.clientY - mouseStartPosY)) + "px";
+}
+function gripUp(e) {
+	gripClicked = false;
+}
+document.getElementById("grippie").addEventListener("mousedown",gripDown,false);
+document.addEventListener("mousemove",gripMove,false);
+document.addEventListener("mouseup",gripUp,false);
+
+	</script>
 </body></html>

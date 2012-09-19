@@ -674,7 +674,7 @@ AnimatedBackground.prototype.setProperty = function(props) {
 		hue:{refresh:1,min:0,max:360}, saturation:{refresh:1,min:0,max:100}, 
 		staticLightnessBase:{refresh:1,min:0,max:100}, staticLightnessVariation:{refresh:1,min:0,max:100}, 
 		dynamicLightnessBase:{refresh:2,min:0,max:100}, dynamicLightnessVariation:{refresh:2,min:0,max:100}, 
-		blockSize:{refresh:3,min:0,max:100}, fadeAmount:{refresh:2,min:0.1,max:10}, 
+		blockSize:{refresh:3,min:0,max:100}, fadeAmount:{refresh:2,min:0.1,max:2}, 
 		pathPauseBase:{refresh:2,min:0,max:100}, pathPauseVariation:{refresh:2,min:0,max:100}, 
 		pathLengthBase:{refresh:2,min:0,max:100}, pathLengthVariation:{refresh:2,min:0,max:100}, 
 		drawingStyle:{refresh:3,min:0,max:2}, noOfLightnessShades:{refresh:3,min:1,max:10} };
@@ -699,7 +699,7 @@ AnimatedBackground.prototype.getProperty = function(props) {
 		hue:{refresh:1,min:0,max:360,step:10}, saturation:{refresh:1,min:0,max:100}, 
 		staticLightnessBase:{refresh:1,min:0,max:100}, staticLightnessVariation:{refresh:1,min:0,max:100}, 
 		dynamicLightnessBase:{refresh:2,min:0,max:100}, dynamicLightnessVariation:{refresh:2,min:0,max:100}, 
-		blockSize:{refresh:3,min:0,max:100}, fadeAmount:{refresh:2,min:0.1,max:10,step:0.1}, 
+		blockSize:{refresh:3,min:0,max:100}, fadeAmount:{refresh:2,min:0.1,max:2,step:0.1}, 
 		pathPauseBase:{refresh:2,min:0,max:100}, pathPauseVariation:{refresh:2,min:0,max:100}, 
 		pathLengthBase:{refresh:2,min:0,max:100}, pathLengthVariation:{refresh:2,min:0,max:100}, 
 		drawingStyle:{refresh:3,min:0,max:2}, noOfLightnessShades:{refresh:3,min:1,max:10} };
