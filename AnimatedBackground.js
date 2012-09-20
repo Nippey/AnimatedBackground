@@ -198,9 +198,15 @@ function AnimatedBackground() {
 			xhr.open('GET', getThisScriptPath(ABGscriptName)+'fnt6x11.bin', true);
 			xhr.responseType = 'arraybuffer';
 			xhr.addEventListener('load', function(e) {
-				//Add font as static Byte-Array to the AnimatedBackground class
-				AnimatedBackground.staticFont = new Uint8Array(e.target.response);
-				AnimatedBackground.staticFontStatus = AnimatedBackground.FONT_LOADED;
+				console.log("onLoad", e.target.readyState, e.target.status);
+				if (e.target.readyState == 4 && e.target.status == 200) {
+					//Add font as static Byte-Array to the AnimatedBackground class
+					AnimatedBackground.staticFont = new Uint8Array(e.target.response);
+					AnimatedBackground.staticFontStatus = AnimatedBackground.FONT_LOADED;
+				} else loadFailSafeFont();
+			}, false);
+			xhr.addEventListener('readyStateChange', function(e) {
+				console.log("onReadyStateChange", e.target.readyState, e.target.status);
 			}, false);
 			xhr.addEventListener('error', function(e) {
 				loadFailSafeFont();
@@ -212,25 +218,9 @@ function AnimatedBackground() {
 	}
 	
 	//Settings
-	//Colour
-	this.hue = 100;							//Colour of the background [0..359]
-	this.saturation = 70;					//Saturation of the background colour [0..100]
-	this.staticLightnessBase = 50;			//Minimum static lightness value of the background colour [0..100]
-	this.staticLightnessVariation = 10;		//Variation of the static lightness value (will always be added) [0..(100-BaseValue)]
-	this.dynamicLightnessBase = 80;			//Minimum dynamic lightness value ...
-	this.dynamicLightnessVariation = 15;	//Variation of the dynamic lightness value  ...
-
-	//Size and Style
-	this.drawingStyle = 2;					//Select among different drawing-styles as rectangles or circles
-	this.noOfLightnessShades = 4;			//Number of different colours used for the background pattern
-	this.blockSize = 6;						//Size of a single quadratic block
-	//General Timing
-	this.fadeAmount = 1;					//Alpha value the dynamic points will be faded WITHIN ONE SECOND
-	//Path specific settings
-	this.pathPauseBase = 10;
-	this.pathPauseVariation = 10;
-	this.pathLengthBase = 15;
-	this.pathLengthVariation = 15;
+	//This code will initialise the changeable member for script configuration.
+	//Please change the members' properties in the "availableProps"-array below
+	this.setProperty(AnimatedBackground.availableProps);
 	//END Settings
 
 	
@@ -297,6 +287,28 @@ AnimatedBackground.staticFont = null;
 AnimatedBackground.DS_RECT = 0;			//Do the animation using rectangles: Primary Operation: FillRect()
 AnimatedBackground.DS_CIRCLE_PRE = 1;	// .. using predrawn circles: Primary Operation: DrawImage()
 AnimatedBackground.DS_CIRCLE = 2;		// .. using circles: Primary Operation: Arc()
+
+//Static value to identify the attributes which are accessible via setProperty and getProperty
+//This Object has a member names which are identical to an accessible property's name
+//The values stored in these members are: 
+//  "refresh"     What part of the animation has to be refreshed if this value gets changed
+//  "min", "max"  The minimum and maximum value recommended for this property
+//	"value"       The standard value of this property
+AnimatedBackground.availableProps = {
+	hue:{refresh:1,min:0,max:360,value:100}, 						//Colour of the background [0..359]
+	saturation:{refresh:1,min:0,max:100,value:70}, 					//Saturation of the background colour [0..100]
+	staticLightnessBase:{refresh:1,min:0,max:100,value:50}, 		//Minimum static lightness value of the background colour [0..100]
+	staticLightnessVariation:{refresh:1,min:0,max:100,value:10}, 	//Variation of the static lightness value (will always be added) [0..(100-BaseValue)]
+	dynamicLightnessBase:{refresh:2,min:0,max:100,value:80}, 		//Minimum dynamic lightness value ...
+	dynamicLightnessVariation:{refresh:2,min:0,max:100,value:15}, 	//Variation of the dynamic lightness value  ...
+	blockSize:{refresh:3,min:0,max:100,value:6}, 					//Size of a single quadratic block
+	fadeAmount:{refresh:2,min:0.1,max:2,value:1}, 					//Alpha value the dynamic points will be faded WITHIN ONE SECOND
+	pathPauseBase:{refresh:2,min:0,max:100,value:10}, 				//
+	pathPauseVariation:{refresh:2,min:0,max:100,value:10}, 			//
+	pathLengthBase:{refresh:2,min:0,max:100,value:15}, 				//
+	pathLengthVariation:{refresh:2,min:0,max:100,value:15}, 		//
+	drawingStyle:{refresh:3,min:0,max:2,value:2}, 					//Select among different drawing-styles as rectangles or circles
+	noOfLightnessShades:{refresh:3,min:1,max:10,value:4} };			//Number of different colours used for the background pattern
 
 
 //Measures the time since the last call of this function
@@ -682,8 +694,9 @@ AnimatedBackground.prototype.setProperty = function(props) {
 
 	for (var k in keys) {
 		var key = keys[k];
-		if ( availableProps.hasOwnProperty(key) && this[key] != props[key]) {
-			this[key] = props[key];
+		var value = props[key].value || props[key];
+		if ( availableProps.hasOwnProperty(key) && this[key] != value) {
+			this[key] = value;
 			if (key == "blockSize") this.rasterSize = this.blockSize + 1;
 			if (key == "noOfLightnessShades") this.pattern = [];
 			this.refreshBG |= (availableProps[key].refresh & 0x01);
