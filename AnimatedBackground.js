@@ -205,9 +205,9 @@ function AnimatedBackground() {
 					AnimatedBackground.staticFontStatus = AnimatedBackground.FONT_LOADED;
 				} else loadFailSafeFont();
 			}, false);
-			xhr.addEventListener('readyStateChange', function(e) {
+			xhr.onreadystatechange = function(e) {
 				console.log("onReadyStateChange", e.target.readyState, e.target.status);
-			}, false);
+			};
 			xhr.addEventListener('error', function(e) {
 				loadFailSafeFont();
 			}, false);
